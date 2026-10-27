@@ -1,14 +1,18 @@
 import type { RequestHandler } from "express";
-import type { ZodType } from "zod";
+import { z, type ZodType } from "zod";
 import { AppError } from "../lib/errors.js";
+
+export function parse<T extends ZodType>(schema: T, data: unknown): z.infer<T> {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    throw new AppError(400, "Validation failed", result.error.issues);
+  }
+  return result.data;
+}
 
 export const validate =
   (schema: ZodType): RequestHandler =>
   (req, _res, next) => {
-    const result = schema.safeParse(req.body);
-    if (!result.success) {
-      throw new AppError(400, "Validation failed", result.error.issues);
-    }
-    req.body = result.data;
+    req.body = parse(schema, req.body);
     next();
   };

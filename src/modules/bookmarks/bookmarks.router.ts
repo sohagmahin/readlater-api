@@ -1,0 +1,41 @@
+import { Router } from "express";
+import { authenticate } from "../../middleware/authenticate.js";
+import { parse, validate } from "../../middleware/validate.js";
+import {
+  createBookmarkSchema,
+  idParamSchema,
+  listQuerySchema,
+  updateBookmarkSchema,
+} from "./bookmarks.schemas.js";
+import * as service from "./bookmarks.service.js";
+
+export const bookmarksRouter = Router();
+
+bookmarksRouter.use(authenticate);
+
+bookmarksRouter.post("/", validate(createBookmarkSchema), async (req, res) => {
+  const { bookmark, created } = await service.create(req.user!.id, req.body.url);
+  // স্টেপ ৭-এ এখানে queue-তে metadata job push হবে
+  res.status(created ? 201 : 200).json(bookmark);
+});
+
+bookmarksRouter.get("/", async (req, res) => {
+  const query = parse(listQuerySchema, req.query);
+  res.json(await service.list(req.user!.id, query));
+});
+
+bookmarksRouter.get("/:id", async (req, res) => {
+  const { id } = parse(idParamSchema, req.params);
+  res.json(await service.getOne(req.user!.id, id));
+});
+
+bookmarksRouter.patch("/:id", validate(updateBookmarkSchema), async (req, res) => {
+  const { id } = parse(idParamSchema, req.params);
+  res.json(await service.update(req.user!.id, id, req.body));
+});
+
+bookmarksRouter.delete("/:id", async (req, res) => {
+  const { id } = parse(idParamSchema, req.params);
+  await service.remove(req.user!.id, id);
+  res.status(204).send();
+});

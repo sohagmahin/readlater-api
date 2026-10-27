@@ -1,7 +1,7 @@
 import express from "express";
 import { authRouter } from "./modules/auth/auth.router.js";
-import { authenticate } from "./middleware/authenticate.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { bookmarksRouter } from "./modules/bookmarks/bookmarks.router.js";
 
 export const app = express();
 
@@ -13,10 +13,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/auth", authRouter);
 
-// সাময়িক: authenticate কাজ করছে কিনা দেখার জন্য, পরে মুছে দেব
-app.get("/me", authenticate, (req, res) => {
-  res.json({ userId: req.user!.id });
-});
+app.use("/bookmarks", bookmarksRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });
