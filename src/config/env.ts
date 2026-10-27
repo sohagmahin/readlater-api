@@ -8,6 +8,7 @@ const schema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32),
   ACCESS_TTL_SECONDS: z.coerce.number().default(900), // ১৫ মিনিট
   REFRESH_TTL_SECONDS: z.coerce.number().default(604800), // ৭ দিন
+  REDIS_URL: z.string().default("redis://localhost:6379"),
 });
 
 export const env = schema.parse(process.env);

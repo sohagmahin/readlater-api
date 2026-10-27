@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "worker": "tsx watch src/worker.ts"
   },
   "keywords": [],
   "author": "",
@@ -17,11 +18,15 @@
   "type": "module",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "bullmq": "^6.5.0",
+    "cheerio": "^1.2.0",
     "dotenv": "^18.0.6",
     "drizzle-orm": "^0.45.3",
     "express": "^5.2.1",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "postgres": "^3.4.9",
+    "undici": "^8.12.3",
     "zod": "^4.6.5"
   },
   "devDependencies": {
