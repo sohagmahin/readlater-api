@@ -8,6 +8,13 @@
       "when": 1791373057946,
       "tag": "0000_fixed_forgotten_one",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793128991263,
+      "tag": "0001_free_gambit",
+      "breakpoints": true
     }
   ]
 }

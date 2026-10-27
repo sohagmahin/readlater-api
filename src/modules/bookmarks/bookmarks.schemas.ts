@@ -30,5 +30,6 @@ export const idParamSchema = z.object({ id: z.string().uuid() });
 export const listQuerySchema = z.object({
   status: statusEnum.optional(),
   tag: tagNameSchema.optional(),
+  cursor: z.string().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
