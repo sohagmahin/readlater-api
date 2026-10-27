@@ -1,6 +1,6 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../../db/client.js";
-import { bookmarks } from "../../db/schema.js";
+import { bookmarks, bookmarkTags, tags } from "../../db/schema.js";
 import { AppError } from "../../lib/errors.js";
 
 type Status = (typeof bookmarks.$inferSelect)["status"];
@@ -22,18 +22,33 @@ export async function create(userId: string, url: string) {
   return { bookmark: existing, created: false };
 }
 
-export async function list(userId: string, opts: { status?: Status; limit: number }) {
-  return db
+export async function list(
+  userId: string,
+  opts: { status?: Status; tag?: string; limit: number },
+) {
+  const rows = await db
     .select()
     .from(bookmarks)
     .where(
       and(
         eq(bookmarks.userId, userId),
         opts.status ? eq(bookmarks.status, opts.status) : undefined,
+        opts.tag
+          ? inArray(
+              bookmarks.id,
+              db
+                .select({ id: bookmarkTags.bookmarkId })
+                .from(bookmarkTags)
+                .innerJoin(tags, eq(tags.id, bookmarkTags.tagId))
+                .where(and(eq(tags.userId, userId), eq(tags.name, opts.tag))),
+            )
+          : undefined,
       ),
     )
     .orderBy(desc(bookmarks.createdAt))
     .limit(opts.limit);
+
+  return withTags(rows);
 }
 
 export async function getOne(userId: string, id: string) {
@@ -43,7 +58,7 @@ export async function getOne(userId: string, id: string) {
     .where(and(eq(bookmarks.id, id), eq(bookmarks.userId, userId)))
     .limit(1);
   if (!row) throw new AppError(404, "Bookmark not found");
-  return row;
+  return (await withTags([row]))[0];
 }
 
 export async function update(
@@ -57,7 +72,7 @@ export async function update(
     .where(and(eq(bookmarks.id, id), eq(bookmarks.userId, userId)))
     .returning();
   if (!row) throw new AppError(404, "Bookmark not found");
-  return row;
+  return (await withTags([row]))[0];
 }
 
 export async function remove(userId: string, id: string) {
@@ -66,4 +81,32 @@ export async function remove(userId: string, id: string) {
     .where(and(eq(bookmarks.id, id), eq(bookmarks.userId, userId)))
     .returning({ id: bookmarks.id });
   if (!row) throw new AppError(404, "Bookmark not found");
+}
+
+async function withTags<T extends { id: string }>(rows: T[]) {
+  if (rows.length === 0) return [];
+
+  const found = await db
+    .select({
+      bookmarkId: bookmarkTags.bookmarkId,
+      id: tags.id,
+      name: tags.name,
+    })
+    .from(bookmarkTags)
+    .innerJoin(tags, eq(tags.id, bookmarkTags.tagId))
+    .where(
+      inArray(
+        bookmarkTags.bookmarkId,
+        rows.map((r) => r.id),
+      ),
+    );
+
+  const byBookmark = new Map<string, { id: string; name: string }[]>();
+  for (const f of found) {
+    const arr = byBookmark.get(f.bookmarkId) ?? [];
+    arr.push({ id: f.id, name: f.name });
+    byBookmark.set(f.bookmarkId, arr);
+  }
+
+  return rows.map((r) => ({ ...r, tags: byBookmark.get(r.id) ?? [] }));
 }

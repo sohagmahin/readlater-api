@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { authenticate } from "../../middleware/authenticate.js";
 import { parse, validate } from "../../middleware/validate.js";
+import { addTagsSchema, bookmarkTagParamSchema } from "../tags/tags.schemas.js";
+import * as tagsService from "../tags/tags.service.js";
 import {
   createBookmarkSchema,
   idParamSchema,
@@ -18,6 +20,12 @@ bookmarksRouter.post("/", validate(createBookmarkSchema), async (req, res) => {
   // স্টেপ ৭-এ এখানে queue-তে metadata job push হবে
   res.status(created ? 201 : 200).json(bookmark);
 });
+
+bookmarksRouter.post("/:id/tags", validate(addTagsSchema), async (req, res) => {
+  const { id } = parse(idParamSchema, req.params);
+  res.json(await tagsService.addTags(req.user!.id, id, req.body.tags));
+});
+
 
 bookmarksRouter.get("/", async (req, res) => {
   const query = parse(listQuerySchema, req.query);
@@ -37,5 +45,11 @@ bookmarksRouter.patch("/:id", validate(updateBookmarkSchema), async (req, res) =
 bookmarksRouter.delete("/:id", async (req, res) => {
   const { id } = parse(idParamSchema, req.params);
   await service.remove(req.user!.id, id);
+  res.status(204).send();
+});
+
+bookmarksRouter.delete("/:id/tags/:tagId", async (req, res) => {
+  const { id, tagId } = parse(bookmarkTagParamSchema, req.params);
+  await tagsService.removeTag(req.user!.id, id, tagId);
   res.status(204).send();
 });

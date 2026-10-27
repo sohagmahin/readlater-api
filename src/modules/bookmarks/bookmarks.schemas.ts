@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tagNameSchema } from "../tags/tags.schemas.js";
 
 const statusEnum = z.enum(["unread", "read", "archived"]);
 
@@ -28,5 +29,6 @@ export const idParamSchema = z.object({ id: z.string().uuid() });
 
 export const listQuerySchema = z.object({
   status: statusEnum.optional(),
+  tag: tagNameSchema.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
