@@ -1,4 +1,6 @@
 import express from "express";
+import { apiReference } from "@scalar/express-api-reference";
+import { openapiDocument } from "./docs/openapi.js";
 import { authRouter } from "./modules/auth/auth.router.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { bookmarksRouter } from "./modules/bookmarks/bookmarks.router.js";
@@ -12,6 +14,21 @@ app.use(express.json());
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
+
+app.get("/docs/openapi.json", (_req, res) => {
+  res.json(openapiDocument);
+});
+app.get(
+  "/docs",
+  apiReference({
+    url: "/docs/openapi.json",
+    pageTitle: "ReadLater API Docs",
+    // UI CDN থেকে আসে; ভার্সন পিন করা, যাতে latest বদলালে হঠাৎ কিছু না ভাঙে
+    bundle: "https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.74.0/esm.js",
+    persistAuth: true, // রিলোড করলেও টোকেন থাকে
+    authentication: { preferredSecurityScheme: "bearerAuth" },
+  }),
+);
 
 app.use(
   "/auth",
