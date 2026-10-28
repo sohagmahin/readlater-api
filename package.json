@@ -9,8 +9,11 @@
     "start": "node dist/server.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:prod": "node dist/db/migrate.js",
     "db:studio": "drizzle-kit studio",
-    "worker": "tsx watch src/worker.ts"
+    "worker": "tsx watch src/worker.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -34,8 +37,11 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.6.4",
+    "@types/supertest": "^7.2.1",
     "drizzle-kit": "^0.31.11",
+    "supertest": "^7.3.1",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
   }
 }
