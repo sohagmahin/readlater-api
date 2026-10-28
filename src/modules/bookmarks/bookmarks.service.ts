@@ -1,8 +1,16 @@
-import { and, desc, eq, inArray,lt,or } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import { db } from "../../db/client.js";
 import { bookmarks, bookmarkTags, tags } from "../../db/schema.js";
 import { AppError } from "../../lib/errors.js";
 import { decodeCursor, encodeCursor } from "../../lib/cursor.js";
+import { bumpListVersion, cached, getListVersion } from "../../lib/cache.js";
+
+type ListOpts = {
+  status?: Status;
+  tag?: string;
+  cursor?: string;
+  limit: number;
+};
 
 type Status = (typeof bookmarks.$inferSelect)["status"];
 
@@ -13,7 +21,10 @@ export async function create(userId: string, url: string) {
     .onConflictDoNothing({ target: [bookmarks.userId, bookmarks.url] })
     .returning();
 
-  if (created) return { bookmark: created, created: true };
+  if (created) {
+    await bumpListVersion(userId);
+    return { bookmark: created, created: true };
+  }
 
   const [existing] = await db
     .select()
@@ -23,10 +34,7 @@ export async function create(userId: string, url: string) {
   return { bookmark: existing, created: false };
 }
 
-export async function list(
-  userId: string,
-  opts: { status?: Status; tag?: string; cursor?: string; limit: number },
-) {
+async function listFromDb(userId: string, opts: ListOpts) {
   const cursor = opts.cursor ? decodeCursor(opts.cursor) : undefined;
 
   const rows = await db
@@ -70,6 +78,22 @@ export async function list(
   };
 }
 
+export async function list(userId: string, opts: ListOpts) {
+  const version = opts.cursor ? null : await getListVersion(userId);
+  if (version === null) return listFromDb(userId, opts);
+
+  const key = [
+    "bm:list",
+    userId,
+    version,
+    opts.status ?? "-",
+    encodeURIComponent(opts.tag ?? "-"),
+    opts.limit,
+  ].join(":");
+
+  return cached(key, 60, () => listFromDb(userId, opts));
+}
+
 export async function getOne(userId: string, id: string) {
   const [row] = await db
     .select()
@@ -91,6 +115,7 @@ export async function update(
     .where(and(eq(bookmarks.id, id), eq(bookmarks.userId, userId)))
     .returning();
   if (!row) throw new AppError(404, "Bookmark not found");
+  await bumpListVersion(userId);
   return (await withTags([row]))[0];
 }
 
@@ -100,6 +125,7 @@ export async function remove(userId: string, id: string) {
     .where(and(eq(bookmarks.id, id), eq(bookmarks.userId, userId)))
     .returning({ id: bookmarks.id });
   if (!row) throw new AppError(404, "Bookmark not found");
+  await bumpListVersion(userId);
 }
 
 async function withTags<T extends { id: string }>(rows: T[]) {

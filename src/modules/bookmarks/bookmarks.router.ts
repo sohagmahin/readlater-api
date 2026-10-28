@@ -11,10 +11,19 @@ import {
   updateBookmarkSchema,
 } from "./bookmarks.schemas.js";
 import * as service from "./bookmarks.service.js";
+import { rateLimit } from "../../middleware/rateLimit.js";
 
 export const bookmarksRouter = Router();
 
 bookmarksRouter.use(authenticate);
+bookmarksRouter.use(
+  rateLimit({
+    name: "api",
+    limit: 100,
+    windowSec: 60,
+    key: (req) => req.user!.id,
+  }),
+);
 
 bookmarksRouter.post("/", validate(createBookmarkSchema), async (req, res) => {
   const { bookmark, created } = await service.create(

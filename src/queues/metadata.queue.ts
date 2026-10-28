@@ -1,10 +1,10 @@
 import { Queue } from "bullmq";
-import { redis } from "./connection.js";
+import { apiRedis } from "../lib/redis.js";
 
 export type MetadataJob = { bookmarkId: string };
 
 export const metadataQueue = new Queue<MetadataJob>("metadata", {
-  connection: redis,
+  connection: apiRedis,
   defaultJobOptions: {
     attempts: 3,
     backoff: { type: "exponential", delay: 2000 },
@@ -12,3 +12,5 @@ export const metadataQueue = new Queue<MetadataJob>("metadata", {
     removeOnFail: 100,
   },
 });
+
+metadataQueue.on("error", (err) => console.error("metadata queue error:", err.message));

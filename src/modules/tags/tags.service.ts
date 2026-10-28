@@ -2,6 +2,7 @@ import { and, count, eq, inArray } from "drizzle-orm";
 import { db } from "../../db/client.js";
 import { bookmarks, bookmarkTags, tags } from "../../db/schema.js";
 import { AppError } from "../../lib/errors.js";
+import { bumpListVersion } from "../../lib/cache.js";
 
 export async function listTags(userId: string) {
   return db
@@ -17,10 +18,14 @@ export async function listTags(userId: string) {
     .orderBy(tags.name);
 }
 
-export async function addTags(userId: string, bookmarkId: string, names: string[]) {
+export async function addTags(
+  userId: string,
+  bookmarkId: string,
+  names: string[],
+) {
   const unique = [...new Set(names)];
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [bm] = await tx
       .select({ id: bookmarks.id })
       .from(bookmarks)
@@ -45,9 +50,16 @@ export async function addTags(userId: string, bookmarkId: string, names: string[
 
     return rows;
   });
+
+  await bumpListVersion(userId);
+  return result;
 }
 
-export async function removeTag(userId: string, bookmarkId: string, tagId: string) {
+export async function removeTag(
+  userId: string,
+  bookmarkId: string,
+  tagId: string,
+) {
   const [bm] = await db
     .select({ id: bookmarks.id })
     .from(bookmarks)
@@ -57,7 +69,15 @@ export async function removeTag(userId: string, bookmarkId: string, tagId: strin
 
   const deleted = await db
     .delete(bookmarkTags)
-    .where(and(eq(bookmarkTags.bookmarkId, bookmarkId), eq(bookmarkTags.tagId, tagId)))
+    .where(
+      and(
+        eq(bookmarkTags.bookmarkId, bookmarkId),
+        eq(bookmarkTags.tagId, tagId),
+      ),
+    )
     .returning();
-  if (deleted.length === 0) throw new AppError(404, "Tag not attached to this bookmark");
+  if (deleted.length === 0)
+    throw new AppError(404, "Tag not attached to this bookmark");
+
+  await bumpListVersion(userId);
 }
